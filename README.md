@@ -42,7 +42,7 @@
 
 ## Codes 
 
-https://console.cloud.google.com/bigquery?sq=471716799905:8c57794f2acc45dfaca9cb40cfd51e3f
+alfianinda.github.io/olist-exploratory-analysis-using-sql-bigquery/
 
 
 ## Developer
