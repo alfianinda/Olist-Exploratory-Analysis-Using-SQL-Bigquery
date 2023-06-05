@@ -42,7 +42,7 @@
 
 ## Codes 
 
-alfianinda.github.io/olist-exploratory-analysis-using-sql-bigquery/
+https://alfianinda.github.io/Olist-Exploratory-Analysis-Using-SQL-Bigquery/
 
 
 ## Developer
