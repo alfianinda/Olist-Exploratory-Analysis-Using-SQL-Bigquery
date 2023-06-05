@@ -1,0 +1,185 @@
+<!-- HTML generated using hilite.me --><div style="background: #ffffff; overflow:auto;width:auto;border:solid gray;border-width:.1em .1em .1em .8em;padding:.2em .6em;"><pre style="margin: 0; line-height: 125%"><span style="color: #888888">-- OLIST EXPLORATORY ANALYSIS USING SQL BIGQUERY </span>
+  <span style="color: #888888">-- QUERY LINK: https://console.cloud.google.com/bigquery?sq=471716799905:8c57794f2acc45dfaca9cb40cfd51e3f</span>
+
+  <span style="color: #888888">-------------------------------------------------------------------------------------------------------------------------------------------</span>
+  <span style="color: #888888">-- 1. Calculate the total users/customers that are listed each year and show the growth percentage from the beginning to the current year</span>
+  <span style="color: #888888">-------------------------------------------------------------------------------------------------------------------------------------------</span>
+  
+  <span style="color: #888888">-- sql 1: counting the number of customers</span>
+  <span style="color: #008800; font-weight: bold">SELECT</span>
+    <span style="color: #008800; font-weight: bold">COUNT</span>(<span style="color: #333333">*</span>) <span style="color: #008800; font-weight: bold">AS</span> no_rows,
+    <span style="color: #008800; font-weight: bold">COUNT</span>(<span style="color: #008800; font-weight: bold">DISTINCT</span> customer_id) <span style="color: #008800; font-weight: bold">AS</span> no_customer_id,
+    <span style="color: #008800; font-weight: bold">COUNT</span>(<span style="color: #008800; font-weight: bold">DISTINCT</span> customer_unique_id) <span style="color: #008800; font-weight: bold">AS</span> no_unique_customer_id
+  <span style="color: #008800; font-weight: bold">FROM</span> (
+    <span style="color: #008800; font-weight: bold">SELECT</span> <span style="color: #008800; font-weight: bold">EXTRACT</span>(<span style="color: #008800; font-weight: bold">YEAR</span> <span style="color: #008800; font-weight: bold">FROM</span> o.order_purchase_timestamp) <span style="color: #008800; font-weight: bold">AS</span> <span style="color: #008800; font-weight: bold">year</span>, <span style="color: #008800; font-weight: bold">c</span>.customer_id, <span style="color: #008800; font-weight: bold">c</span>.customer_unique_id
+    <span style="color: #008800; font-weight: bold">FROM</span> <span style="color: #333333">`</span><span style="color: #008800; font-weight: bold">sql</span><span style="color: #333333">-</span>project<span style="color: #333333">-</span>inna.olist_dataset.olist_customers_dataset<span style="color: #333333">`</span> <span style="color: #008800; font-weight: bold">AS</span> <span style="color: #008800; font-weight: bold">c</span>
+    <span style="color: #008800; font-weight: bold">JOIN</span> <span style="color: #333333">`</span><span style="color: #008800; font-weight: bold">sql</span><span style="color: #333333">-</span>project<span style="color: #333333">-</span>inna.olist_dataset.olist_orders_dataset<span style="color: #333333">`</span> <span style="color: #008800; font-weight: bold">AS</span> o
+    <span style="color: #008800; font-weight: bold">ON</span> <span style="color: #008800; font-weight: bold">c</span>.customer_id <span style="color: #333333">=</span> o.customer_id
+  );
+  <span style="color: #888888">-- no_customer_id = 99,441 &gt; 96,096 = no_unique_customer_id so some customers might have more than one customer_id,</span>
+  
+  <span style="color: #888888">-- sql 2: This code uses 3 common table expressions (CTEs): </span>
+  <span style="color: #888888">-- Join_customers_orders to join customers and orders tables</span>
+  <span style="color: #888888">-- Customer_counts to calculate the total customers listed each year</span>
+  <span style="color: #888888">-- Cumulative_counts to calculate the cumulative number of customers over time. </span>
+  <span style="color: #888888">-- The final query retrieves the year, total customers, cumulative customers, and growth percentage by comparing the current cumulative count with the previous year&#39;s cumulative count.</span>
+  <span style="color: #008800; font-weight: bold">WITH</span> join_customers_orders <span style="color: #008800; font-weight: bold">AS</span> (
+    <span style="color: #008800; font-weight: bold">SELECT</span> <span style="color: #008800; font-weight: bold">EXTRACT</span>(<span style="color: #008800; font-weight: bold">YEAR</span> <span style="color: #008800; font-weight: bold">FROM</span> o.order_purchase_timestamp) <span style="color: #008800; font-weight: bold">AS</span> <span style="color: #008800; font-weight: bold">year</span>, <span style="color: #008800; font-weight: bold">c</span>.customer_unique_id
+    <span style="color: #008800; font-weight: bold">FROM</span> <span style="color: #333333">`</span><span style="color: #008800; font-weight: bold">sql</span><span style="color: #333333">-</span>project<span style="color: #333333">-</span>inna.olist_dataset.olist_customers_dataset<span style="color: #333333">`</span> <span style="color: #008800; font-weight: bold">AS</span> <span style="color: #008800; font-weight: bold">c</span>
+    <span style="color: #008800; font-weight: bold">JOIN</span> <span style="color: #333333">`</span><span style="color: #008800; font-weight: bold">sql</span><span style="color: #333333">-</span>project<span style="color: #333333">-</span>inna.olist_dataset.olist_orders_dataset<span style="color: #333333">`</span> <span style="color: #008800; font-weight: bold">AS</span> o
+    <span style="color: #008800; font-weight: bold">ON</span> <span style="color: #008800; font-weight: bold">c</span>.customer_id <span style="color: #333333">=</span> o.customer_id
+  ),
+  customer_counts <span style="color: #008800; font-weight: bold">AS</span> (
+    <span style="color: #008800; font-weight: bold">SELECT</span> <span style="color: #008800; font-weight: bold">year</span>, <span style="color: #008800; font-weight: bold">COUNT</span>(<span style="color: #008800; font-weight: bold">DISTINCT</span> customer_unique_id) <span style="color: #008800; font-weight: bold">AS</span> total_customers
+    <span style="color: #008800; font-weight: bold">FROM</span> join_customers_orders
+    <span style="color: #008800; font-weight: bold">GROUP</span> <span style="color: #008800; font-weight: bold">BY</span> <span style="color: #008800; font-weight: bold">year</span>
+    <span style="color: #008800; font-weight: bold">ORDER</span> <span style="color: #008800; font-weight: bold">BY</span> <span style="color: #008800; font-weight: bold">year</span>
+  ),
+  cumulative_counts <span style="color: #008800; font-weight: bold">AS</span> (
+    <span style="color: #008800; font-weight: bold">SELECT</span> <span style="color: #333333">*</span>, <span style="color: #008800; font-weight: bold">SUM</span>(total_customers) OVER (<span style="color: #008800; font-weight: bold">ORDER</span> <span style="color: #008800; font-weight: bold">BY</span> <span style="color: #008800; font-weight: bold">year</span>) <span style="color: #008800; font-weight: bold">AS</span> cumulative_customers
+    <span style="color: #008800; font-weight: bold">FROM</span> customer_counts
+  )
+  
+  <span style="color: #008800; font-weight: bold">SELECT</span> 
+    <span style="color: #333333">*</span>,
+    ROUND(((cumulative_customers <span style="color: #333333">-</span> (LAG(cumulative_customers) OVER (<span style="color: #008800; font-weight: bold">ORDER</span> <span style="color: #008800; font-weight: bold">BY</span> <span style="color: #008800; font-weight: bold">year</span>)))<span style="color: #333333">/</span>LAG(cumulative_customers) OVER (<span style="color: #008800; font-weight: bold">ORDER</span> <span style="color: #008800; font-weight: bold">BY</span> <span style="color: #008800; font-weight: bold">year</span>)) <span style="color: #333333">*</span> <span style="color: #0000DD; font-weight: bold">100</span>, <span style="color: #0000DD; font-weight: bold">2</span>) <span style="color: #008800; font-weight: bold">AS</span> growth_percentage
+  <span style="color: #008800; font-weight: bold">FROM</span> cumulative_counts
+  <span style="color: #008800; font-weight: bold">ORDER</span> <span style="color: #008800; font-weight: bold">BY</span> <span style="color: #008800; font-weight: bold">year</span>;
+  <span style="color: #888888">-- The year 2016. It shows a total of 326 customers listed in that year. The cumulative customer count is also 326, as it is the first year in the dataset. The growth percentage is null because there is no previous year to compare the growth.</span>
+  <span style="color: #888888">-- The year 2017. The total number of customers listed in that year is 43,713. The cumulative customer count is 44,039, which is the sum of the previous cumulative count (326) and the current year&#39;s total customers. The growth percentage is calculated as 13,408.9, representing the significant increase from the previous year.</span>
+  <span style="color: #888888">-- The year 2018. In this year, there were 52,749 customers listed. The cumulative customer count is 96,788, obtained by adding the previous cumulative count (44,039) to the total customers of the current year. The growth percentage is calculated as 119.78, indicating a substantial growth rate compared to the previous year.</span>
+  
+  <span style="color: #888888">-------------------------------------------------------------------------------------------------------------------------------------------</span>
+  <span style="color: #888888">-- 2. Determine in which state should the company locate their warehouse; it should be in an area where the order density is the highest. (density ≠ amount)</span>
+  <span style="color: #888888">-------------------------------------------------------------------------------------------------------------------------------------------</span>
+  
+  <span style="color: #888888">-- This code uses 2 common table expressions (CTEs): </span>
+  <span style="color: #888888">-- Join_customer_orders to join customers and orders tables</span>
+  <span style="color: #888888">-- Order_population_counts indicates the total count of orders and population for that state. </span>
+  <span style="color: #888888">-- The final query shows the calculated order density by dividing the order count by the population of the state. By retrieving the row with the highest order density, it can be determined the state where the company should locate their warehouse, as it indicates the area with the highest concentration of orders relative to the population.</span>
+  <span style="color: #008800; font-weight: bold">WITH</span> join_customers_orders <span style="color: #008800; font-weight: bold">AS</span> (
+    <span style="color: #008800; font-weight: bold">SELECT</span> customer_state, order_id, customer_unique_id
+    <span style="color: #008800; font-weight: bold">FROM</span> <span style="color: #333333">`</span><span style="color: #008800; font-weight: bold">sql</span><span style="color: #333333">-</span>project<span style="color: #333333">-</span>inna.olist_dataset.olist_customers_dataset<span style="color: #333333">`</span> <span style="color: #008800; font-weight: bold">AS</span> <span style="color: #008800; font-weight: bold">c</span>
+    <span style="color: #008800; font-weight: bold">JOIN</span> <span style="color: #333333">`</span><span style="color: #008800; font-weight: bold">sql</span><span style="color: #333333">-</span>project<span style="color: #333333">-</span>inna.olist_dataset.olist_orders_dataset<span style="color: #333333">`</span> <span style="color: #008800; font-weight: bold">AS</span> o
+    <span style="color: #008800; font-weight: bold">ON</span> <span style="color: #008800; font-weight: bold">c</span>.customer_id <span style="color: #333333">=</span> o.customer_id
+  ),
+  order_population_counts <span style="color: #008800; font-weight: bold">AS</span> (
+    <span style="color: #008800; font-weight: bold">SELECT</span> 
+      customer_state, 
+      <span style="color: #008800; font-weight: bold">COUNT</span>(<span style="color: #008800; font-weight: bold">DISTINCT</span> order_id) <span style="color: #008800; font-weight: bold">AS</span> order_count,
+      <span style="color: #008800; font-weight: bold">COUNT</span>(<span style="color: #008800; font-weight: bold">DISTINCT</span> customer_unique_id) <span style="color: #008800; font-weight: bold">AS</span> population
+    <span style="color: #008800; font-weight: bold">FROM</span> join_customers_orders
+    <span style="color: #008800; font-weight: bold">GROUP</span> <span style="color: #008800; font-weight: bold">BY</span> customer_state
+  )
+  
+  <span style="color: #008800; font-weight: bold">SELECT</span> 
+    <span style="color: #333333">*</span>,
+    ROUND(<span style="color: #008800; font-weight: bold">CAST</span>(order_count <span style="color: #008800; font-weight: bold">AS</span> FLOAT64) <span style="color: #333333">/</span> population, <span style="color: #0000DD; font-weight: bold">2</span>) <span style="color: #008800; font-weight: bold">AS</span> order_density
+  <span style="color: #008800; font-weight: bold">FROM</span> order_population_counts
+  <span style="color: #008800; font-weight: bold">ORDER</span> <span style="color: #008800; font-weight: bold">BY</span> order_density <span style="color: #008800; font-weight: bold">DESC</span>
+  <span style="color: #008800; font-weight: bold">LIMIT</span> <span style="color: #0000DD; font-weight: bold">1</span>;
+  <span style="color: #888888">-- the state &quot;RO&quot; has an order count of 253 and a population of 240. The calculated order density for &quot;RO&quot; is 1.05, indicating that there is an average of 1.05 orders per person in that state.</span>
+  <span style="color: #888888">-- Therefore, based on the highest order density, the company should consider locating their warehouse in &quot;RO&quot;. This state has the highest concentration of orders relative to its population, making it a potentially favorable area for warehouse placement.</span>
+  
+  <span style="color: #888888">-------------------------------------------------------------------------------------------------------------------------------------------</span>
+  <span style="color: #888888">-- 3. What is the second highest selling product and the second lowest selling products category in English and Portuguese?</span>
+  <span style="color: #888888">-------------------------------------------------------------------------------------------------------------------------------------------</span>
+  
+  <span style="color: #888888">-- This code uses 3 common table expressions (CTEs): </span>
+  <span style="color: #888888">-- Join_products_order to join products, order_items, and product_category_name_translation tables. </span>
+  <span style="color: #888888">-- The product_sales CTE calculates the count of distinct orders for each product. </span>
+  <span style="color: #888888">-- The ranked_sales CTE builds upon the results of product_sales and assigns ranks to each product based on the order count, using ROW_NUMBER() function. It calculates both the rank_high (in descending order of order count) and rank_low (in ascending order of order count).</span>
+  <span style="color: #888888">-- The final query shows filtering from the ranked_sales CTE, for products with either the second highest (rank_high = 2) or second lowest (rank_low = 2) order count.</span>
+  <span style="color: #008800; font-weight: bold">WITH</span> join_products_order <span style="color: #008800; font-weight: bold">AS</span> (
+    <span style="color: #008800; font-weight: bold">SELECT</span> p.product_id, p.product_category_name <span style="color: #008800; font-weight: bold">AS</span> product_category_portuguese, pt.string_field_1 <span style="color: #008800; font-weight: bold">AS</span> product_category_english, order_id
+    <span style="color: #008800; font-weight: bold">FROM</span> <span style="color: #333333">`</span><span style="color: #008800; font-weight: bold">sql</span><span style="color: #333333">-</span>project<span style="color: #333333">-</span>inna.olist_dataset.olist_products_dataset<span style="color: #333333">`</span> <span style="color: #008800; font-weight: bold">AS</span> p
+    <span style="color: #008800; font-weight: bold">LEFT</span> <span style="color: #008800; font-weight: bold">JOIN</span> <span style="color: #333333">`</span><span style="color: #008800; font-weight: bold">sql</span><span style="color: #333333">-</span>project<span style="color: #333333">-</span>inna.olist_dataset.olist_order_items_dataset<span style="color: #333333">`</span> <span style="color: #008800; font-weight: bold">AS</span> oi
+      <span style="color: #008800; font-weight: bold">ON</span> p.product_id <span style="color: #333333">=</span> oi.product_id
+    <span style="color: #008800; font-weight: bold">JOIN</span> <span style="color: #333333">`</span><span style="color: #008800; font-weight: bold">sql</span><span style="color: #333333">-</span>project<span style="color: #333333">-</span>inna.olist_dataset.product_category_name_translation<span style="color: #333333">`</span> <span style="color: #008800; font-weight: bold">AS</span> pt
+      <span style="color: #008800; font-weight: bold">ON</span> p.product_category_name <span style="color: #333333">=</span> pt.string_field_0
+    <span style="color: #008800; font-weight: bold">WHERE</span> p.product_category_name <span style="color: #008800; font-weight: bold">IS</span> <span style="color: #008800; font-weight: bold">NOT</span> <span style="color: #008800; font-weight: bold">NULL</span>
+  ),
+  product_sales <span style="color: #008800; font-weight: bold">AS</span> (
+    <span style="color: #008800; font-weight: bold">SELECT</span> 
+      product_id,
+      product_category_portuguese,
+      product_category_english,
+      <span style="color: #008800; font-weight: bold">COUNT</span>(<span style="color: #008800; font-weight: bold">DISTINCT</span> order_id) <span style="color: #008800; font-weight: bold">AS</span> order_count
+    <span style="color: #008800; font-weight: bold">FROM</span> join_products_order
+    <span style="color: #008800; font-weight: bold">GROUP</span> <span style="color: #008800; font-weight: bold">BY</span> <span style="color: #0000DD; font-weight: bold">1</span>,<span style="color: #0000DD; font-weight: bold">2</span>,<span style="color: #0000DD; font-weight: bold">3</span>
+  ),
+  ranked_sales <span style="color: #008800; font-weight: bold">AS</span> (
+    <span style="color: #008800; font-weight: bold">SELECT</span>
+      <span style="color: #333333">*</span>,
+      ROW_NUMBER() OVER (<span style="color: #008800; font-weight: bold">ORDER</span> <span style="color: #008800; font-weight: bold">BY</span> order_count <span style="color: #008800; font-weight: bold">DESC</span>) <span style="color: #008800; font-weight: bold">AS</span> rank_high,
+      ROW_NUMBER() OVER (<span style="color: #008800; font-weight: bold">ORDER</span> <span style="color: #008800; font-weight: bold">BY</span> order_count) <span style="color: #008800; font-weight: bold">AS</span> rank_low
+    <span style="color: #008800; font-weight: bold">FROM</span> product_sales
+  )
+  
+  <span style="color: #008800; font-weight: bold">SELECT</span> <span style="color: #333333">*</span>
+  <span style="color: #008800; font-weight: bold">FROM</span> ranked_sales
+  <span style="color: #008800; font-weight: bold">WHERE</span> rank_high <span style="color: #333333">=</span> <span style="color: #0000DD; font-weight: bold">2</span> <span style="color: #008800; font-weight: bold">OR</span> rank_low <span style="color: #333333">=</span> <span style="color: #0000DD; font-weight: bold">2</span>;
+  <span style="color: #888888">-- The second highest selling product has a product ID of &quot;aca2eb7d00ea1a7b8ebd4e68314663af&quot; and belongs to the category &quot;furniture_decor&quot; in English and &quot;moveis_decoracao&quot; in Portuguese. It has a total order count of 431.</span>
+  <span style="color: #888888">-- On the other hand, the second lowest selling product category has a product category in English called &quot;electronics&quot; and in Portuguese &quot;eletronicos&quot;. It has an order count of 1.</span>
+  <span style="color: #888888">-- These insights reveal the products that are performing well in terms of sales, with the second highest selling product category indicating a strong demand for furniture and decor items. Conversely, the second lowest selling product category suggests a relatively lower demand for electronics. These findings can be valuable for business decision-making, such as inventory management and marketing strategies, to capitalize on popular product categories and potentially improve sales in underperforming categories.</span>
+  
+  <span style="color: #888888">-------------------------------------------------------------------------------------------------------------------------------------------</span>
+  <span style="color: #888888">-- 4. Count how many products arrived late (exceeding the promised delivery date) and the percentage of orders that are delivered on schedule or faster.</span>
+  <span style="color: #888888">-------------------------------------------------------------------------------------------------------------------------------------------</span>
+  
+  <span style="color: #888888">-- This code uses 2 common table expressions (CTEs): </span>
+  <span style="color: #888888">-- Join_orders to join order_items and orders tables. </span>
+  <span style="color: #888888">-- The order_metrics CTE calculate the metrics related to order delivery. The CTE calculates the late_arrivals_count, on_time_or_faster_count, and total_orders based on the join_orders table.</span>
+  <span style="color: #888888">-- After defining the CTE, the main query selects the calculated metrics from the CTE and calculates the on_time_or_faster_percentage by dividing on_time_or_faster_count by total_orders and multiplying by 100. The result is rounded to two decimal places.</span>
+  <span style="color: #008800; font-weight: bold">WITH</span> join_orders <span style="color: #008800; font-weight: bold">AS</span> (
+    <span style="color: #008800; font-weight: bold">SELECT</span> <span style="color: #008800; font-weight: bold">DISTINCT</span> oi.order_id, oi.product_id, o.order_delivered_customer_date, o.order_estimated_delivery_date
+    <span style="color: #008800; font-weight: bold">FROM</span> <span style="color: #333333">`</span><span style="color: #008800; font-weight: bold">sql</span><span style="color: #333333">-</span>project<span style="color: #333333">-</span>inna.olist_dataset.olist_order_items_dataset<span style="color: #333333">`</span> <span style="color: #008800; font-weight: bold">AS</span> oi
+    <span style="color: #008800; font-weight: bold">JOIN</span> <span style="color: #333333">`</span><span style="color: #008800; font-weight: bold">sql</span><span style="color: #333333">-</span>project<span style="color: #333333">-</span>inna.olist_dataset.olist_orders_dataset<span style="color: #333333">`</span> <span style="color: #008800; font-weight: bold">AS</span> o
+      <span style="color: #008800; font-weight: bold">ON</span> oi.order_id <span style="color: #333333">=</span> o.order_id
+  ), 
+  order_metrics <span style="color: #008800; font-weight: bold">AS</span> (
+    <span style="color: #008800; font-weight: bold">SELECT</span>
+      COUNTIF(DATE_DIFF(order_delivered_customer_date, order_estimated_delivery_date, <span style="color: #008800; font-weight: bold">DAY</span>) <span style="color: #333333">&gt;</span> <span style="color: #0000DD; font-weight: bold">0</span>) <span style="color: #008800; font-weight: bold">AS</span> late_arrivals_count,
+      COUNTIF(DATE_DIFF(order_delivered_customer_date, order_estimated_delivery_date, <span style="color: #008800; font-weight: bold">DAY</span>) <span style="color: #333333">&lt;=</span> <span style="color: #0000DD; font-weight: bold">0</span>) <span style="color: #008800; font-weight: bold">AS</span> on_time_or_faster_count,
+      <span style="color: #008800; font-weight: bold">COUNT</span>(<span style="color: #333333">*</span>) <span style="color: #008800; font-weight: bold">AS</span> total_orders
+    <span style="color: #008800; font-weight: bold">FROM</span> join_orders
+  )
+  
+  <span style="color: #008800; font-weight: bold">SELECT</span>
+    late_arrivals_count,
+    ROUND(<span style="color: #008800; font-weight: bold">CAST</span>(on_time_or_faster_count <span style="color: #008800; font-weight: bold">AS</span> FLOAT64) <span style="color: #333333">/</span> total_orders <span style="color: #333333">*</span> <span style="color: #0000DD; font-weight: bold">100</span>, <span style="color: #0000DD; font-weight: bold">2</span>) <span style="color: #008800; font-weight: bold">AS</span> on_time_or_faster_percentage
+  <span style="color: #008800; font-weight: bold">FROM</span> order_metrics;
+  <span style="color: #888888">-- `late_arrivals_count`: There are 6,666 products that arrived late, exceeding the promised delivery date.</span>
+  <span style="color: #888888">-- `on_time_or_faster_percentage`: Approximately 91.31% of the orders were delivered on schedule or faster.</span>
+  <span style="color: #888888">-- These insights indicate that a significant portion of the orders (91.31%) were delivered on schedule or faster, while 6,666 products arrived late. It highlights the importance of monitoring and improving delivery performance to ensure a higher percentage of orders are delivered within the promised timeframe.</span>
+  
+  <span style="color: #888888">-------------------------------------------------------------------------------------------------------------------------------------------</span>
+  <span style="color: #888888">-- 5. Determine whether late delivery affects the ratings (star) given on those products.You can also explain your result in short sentences if necessary.</span>
+  <span style="color: #888888">-------------------------------------------------------------------------------------------------------------------------------------------</span>
+  
+  <span style="color: #888888">-- This code uses 1 common table expressions (CTEs): </span>
+  <span style="color: #888888">-- Join_reviews_orders to join orders and order_reviews tables. </span>
+  <span style="color: #888888">-- The main query selects the review score, calculates the average number of days late for each review score category, and counts the number of reviews for each score.</span>
+  <span style="color: #008800; font-weight: bold">WITH</span> join_reviews_orders <span style="color: #008800; font-weight: bold">AS</span> (
+    <span style="color: #008800; font-weight: bold">SELECT</span> <span style="color: #008800; font-weight: bold">DISTINCT</span> o.order_id, o.order_delivered_customer_date, o.order_estimated_delivery_date, r.review_score
+    <span style="color: #008800; font-weight: bold">FROM</span> <span style="color: #333333">`</span><span style="color: #008800; font-weight: bold">sql</span><span style="color: #333333">-</span>project<span style="color: #333333">-</span>inna.olist_dataset.olist_orders_dataset<span style="color: #333333">`</span> <span style="color: #008800; font-weight: bold">AS</span> o
+    <span style="color: #008800; font-weight: bold">LEFT</span> <span style="color: #008800; font-weight: bold">JOIN</span> <span style="color: #333333">`</span><span style="color: #008800; font-weight: bold">sql</span><span style="color: #333333">-</span>project<span style="color: #333333">-</span>inna.olist_dataset.olist_order_reviews_dataset<span style="color: #333333">`</span> r
+      <span style="color: #008800; font-weight: bold">ON</span> o.order_id <span style="color: #333333">=</span> r.order_id
+  )
+  
+  <span style="color: #008800; font-weight: bold">SELECT</span>
+    review_score,
+    ROUND(<span style="color: #008800; font-weight: bold">AVG</span>(DATE_DIFF(order_delivered_customer_date, order_estimated_delivery_date, <span style="color: #008800; font-weight: bold">DAY</span>)),<span style="color: #0000DD; font-weight: bold">2</span>) <span style="color: #008800; font-weight: bold">AS</span> late_arrivals_avg,
+    <span style="color: #008800; font-weight: bold">COUNT</span>(<span style="color: #333333">*</span>) <span style="color: #008800; font-weight: bold">AS</span> count_reviews
+  <span style="color: #008800; font-weight: bold">FROM</span> join_reviews_orders
+  <span style="color: #008800; font-weight: bold">WHERE</span>
+    order_delivered_customer_date <span style="color: #333333">&gt;</span> order_estimated_delivery_date 
+  <span style="color: #008800; font-weight: bold">GROUP</span> <span style="color: #008800; font-weight: bold">BY</span> <span style="color: #0000DD; font-weight: bold">1</span>
+  <span style="color: #008800; font-weight: bold">ORDER</span> <span style="color: #008800; font-weight: bold">BY</span> <span style="color: #0000DD; font-weight: bold">1</span>;
+  <span style="color: #888888">-- The average percentage of late arrivals is decreasing as the review score increases. This suggests that higher-rated products tend to have lower instances of late delivery.</span>
+  <span style="color: #888888">-- The count of reviews decreases as the review score increases. This is expected since higher-rated products may have fewer reviews overall.</span>
+  <span style="color: #888888">-- The highest average percentage of late arrivals is observed for products with a review score of 1, indicating that these products have a higher likelihood of experiencing late delivery.</span>
+  <span style="color: #888888">-- Products with a review score of 5 have the lowest average percentage of late arrivals, indicating that these products are more likely to be delivered on time or ahead of schedule.</span>
+  <span style="color: #888888">-- Based on these insights, it can be inferred that there is a correlation between late delivery and lower review scores. Products with a higher incidence of late delivery tend to receive lower ratings, while products with better delivery performance tend to receive higher ratings. However, it&#39;s important to note that these observations are based on the provided data and further analysis may be required to establish a definitive causal relationship between late delivery and ratings.</span>
+  </pre></div>
+  
