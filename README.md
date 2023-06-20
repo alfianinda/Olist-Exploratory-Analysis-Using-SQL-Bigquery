@@ -49,5 +49,5 @@ https://alfianinda.github.io/Olist-Exploratory-Analysis-Using-SQL-Bigquery/
 
 > **NUR INNA ALFIANINDA**
 
-> https://cv.alamazed.com/data/
+> ni.alfianinda@gmail.com
 
